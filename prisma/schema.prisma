@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  jobs      Job[]
+  personas  Persona[]
+}
+
+model Persona {
+  id        String   @id @default(cuid())
+  userId    String
+  faceUrl   String
+  voiceId   String
+  name      String?
+  createdAt DateTime @default(now())
+  jobs      Job[]
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Job {
+  id        String    @id @default(cuid())
+  userId    String
+  personaId String
+  status    JobStatus @default(queued)
+  srcUrl    String
+  outUrl    String?
+  progress  Int       @default(0)
+  error     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  persona   Persona   @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum JobStatus {
+  queued
+  processing
+  done
+  failed
+}
