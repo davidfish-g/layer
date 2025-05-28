@@ -1,11 +1,8 @@
-'use client'
-
 import './globals.css'
 import React from 'react'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { SessionProvider } from 'next-auth/react'
-import { QueryProvider } from './providers/query-provider'
+import { Providers } from './providers'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -22,13 +19,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <SessionProvider>
-          <QueryProvider>
-            <div className="min-h-screen bg-background">
-              {children}
-            </div>
-          </QueryProvider>
-        </SessionProvider>
+        <Providers>
+          <div className="min-h-screen bg-background">
+            {children}
+          </div>
+        </Providers>
       </body>
     </html>
   )
