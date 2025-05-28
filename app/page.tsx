@@ -4,6 +4,7 @@ import { authOptions } from './api/auth/[...nextauth]/route'
 import Header from './components/Header'
 import PersonaList from './components/PersonaList'
 import VideoUpload from './components/VideoUpload'
+import JobList from './components/JobList'
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions)
@@ -16,7 +17,7 @@ export default async function HomePage() {
     <div className="min-h-screen">
       <Header />
       <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Personas Section */}
           <div className="space-y-6">
             <div>
@@ -37,6 +38,17 @@ export default async function HomePage() {
               </p>
             </div>
             <VideoUpload />
+          </div>
+
+          {/* Jobs Section */}
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Your Transformations</h2>
+              <p className="text-muted-foreground">
+                Track the progress of your video transformations
+              </p>
+            </div>
+            <JobList />
           </div>
         </div>
       </main>
