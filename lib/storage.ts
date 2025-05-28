@@ -18,15 +18,13 @@ export async function uploadFile(
     metadata: {
       contentType: mimeType,
     },
+    resumable: false,
   })
 
   return new Promise((resolve, reject) => {
     stream.on('error', reject)
     stream.on('finish', () => {
-      // Make the file public
-      blob.makePublic().then(() => {
-        resolve(`https://storage.googleapis.com/${process.env.GCS_BUCKET}/${fileName}`)
-      }).catch(reject)
+      resolve(`https://storage.googleapis.com/${process.env.GCS_BUCKET}/${fileName}`)
     })
     stream.end(file)
   })

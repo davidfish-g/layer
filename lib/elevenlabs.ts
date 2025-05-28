@@ -13,17 +13,23 @@ export async function createVoice(
   name: string,
   voiceSample: Buffer
 ): Promise<string> {
-  const formData = new FormData()
-  formData.append('name', name)
-  formData.append('files', new Blob([voiceSample], { type: 'audio/wav' }), 'sample.wav')
+  try {
+    const formData = new FormData()
+    formData.append('name', name)
+    formData.append('files', new Blob([voiceSample], { type: 'audio/wav' }), 'sample.wav')
+    formData.append('description', `Voice clone for ${name}`)
 
-  const response = await elevenlabsClient.post('/voices/add', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  })
+    const response = await elevenlabsClient.post('/voices/add', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
 
-  return response.data.voice_id
+    return response.data.voice_id
+  } catch (error: any) {
+    console.error('ElevenLabs API error:', error.response?.data || error.message)
+    throw new Error(`Failed to create voice: ${error.response?.data?.detail || error.message}`)
+  }
 }
 
 export async function speechToSpeech(
