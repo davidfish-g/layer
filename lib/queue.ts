@@ -1,5 +1,4 @@
 import { PubSub } from '@google-cloud/pubsub'
-import { createClient } from 'redis'
 
 interface JobPayload {
   jobId: string
@@ -8,17 +7,7 @@ interface JobPayload {
   videoUrl: string
 }
 
-// Initialize Redis client for local development
-let redisClient: any = null
-
-if (process.env.NODE_ENV === 'development') {
-  redisClient = createClient({
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
-  })
-  redisClient.connect()
-}
-
-// Initialize Pub/Sub for production
+// Initialize Pub/Sub (cloud-native messaging)
 const pubsub = new PubSub({
   projectId: process.env.GCP_PROJECT_ID,
 })
@@ -26,14 +15,10 @@ const pubsub = new PubSub({
 const topic = pubsub.topic(process.env.PUBSUB_TOPIC!)
 
 export async function enqueueJob(payload: JobPayload): Promise<void> {
-  if (process.env.NODE_ENV === 'development' && redisClient) {
-    // Use Redis for local development
-    await redisClient.lPush('video-processing-queue', JSON.stringify(payload))
-  } else {
-    // Use Pub/Sub for production
-    const message = Buffer.from(JSON.stringify(payload))
-    await topic.publishMessage({ data: message })
-  }
+  // Use Pub/Sub for both development and production
+  const message = Buffer.from(JSON.stringify(payload))
+  await topic.publishMessage({ data: message })
+  console.log(`Job ${payload.jobId} enqueued to Pub/Sub topic: ${process.env.PUBSUB_TOPIC}`)
 }
 
 export async function updateJobProgress(

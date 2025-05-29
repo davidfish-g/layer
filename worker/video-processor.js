@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Video Processing Worker
+ * Video Processing Worker - Cloud Ready
  * 
  * This worker processes video transformation jobs:
  * 1. Downloads source video from GCS
@@ -14,27 +14,18 @@
  */
 
 const { PubSub } = require('@google-cloud/pubsub')
-const { createClient } = require('redis')
 const { PrismaClient } = require('@prisma/client')
 const { exec } = require('child_process')
 const { promisify } = require('util')
 const fs = require('fs').promises
 const path = require('path')
 const axios = require('axios')
+const http = require('http')
 
 const execAsync = promisify(exec)
 const prisma = new PrismaClient()
 
-// Initialize Redis for local development
-let redisClient = null
-if (process.env.NODE_ENV === 'development') {
-  redisClient = createClient({
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
-  })
-  redisClient.connect()
-}
-
-// Initialize Pub/Sub for production
+// Initialize Pub/Sub (cloud-native message queue)
 const pubsub = new PubSub({
   projectId: process.env.GCP_PROJECT_ID,
 })
@@ -162,18 +153,25 @@ class VideoProcessor {
       writer.on('error', reject)
     })
     
-    // Perform face swap using FaceFusion CLI
+    // Perform face swap using FaceFusion wrapper
     const outputPath = path.join(this.workDir, `${jobId}_faceswapped.mp4`)
-    await execAsync(`facefusion run --source "${facePath}" --target "${videoPath}" --output "${outputPath}"`)
+    const wrapperPath = path.join(__dirname, 'python', 'facefusion_wrapper.py')
+    
+    await execAsync(`python3 "${wrapperPath}" --source "${facePath}" --target "${videoPath}" --output "${outputPath}"`)
     
     return outputPath
   }
 
   async convertVoice(audioPath, voiceId, jobId) {
     // Use ElevenLabs speech-to-speech API
+    const FormData = require('form-data')
     const formData = new FormData()
     const audioBuffer = await fs.readFile(audioPath)
-    formData.append('audio', new Blob([audioBuffer], { type: 'audio/wav' }), 'input.wav')
+    
+    formData.append('audio', audioBuffer, {
+      filename: 'input.wav',
+      contentType: 'audio/wav'
+    })
     formData.append('model_id', 'eleven_multilingual_v2')
 
     const response = await axios.post(
@@ -182,7 +180,7 @@ class VideoProcessor {
       {
         headers: {
           'xi-api-key': process.env.ELEVENLABS_API_KEY,
-          'Content-Type': 'multipart/form-data',
+          ...formData.getHeaders()
         },
         responseType: 'arraybuffer',
       }
@@ -197,9 +195,9 @@ class VideoProcessor {
   async performLipSync(videoPath, audioPath, jobId) {
     // Use MuseTalk for lip synchronization
     const outputPath = path.join(this.workDir, `${jobId}_final.mp4`)
+    const wrapperPath = path.join(__dirname, 'python', 'musetalk_wrapper.py')
     
-    // This is a placeholder - actual MuseTalk integration would depend on their API/CLI
-    await execAsync(`musetalk --video "${videoPath}" --audio "${audioPath}" --output "${outputPath}"`)
+    await execAsync(`python3 "${wrapperPath}" --video "${videoPath}" --audio "${audioPath}" --output "${outputPath}"`)
     
     return outputPath
   }
@@ -246,47 +244,56 @@ class VideoProcessor {
   }
 }
 
+// Health check server for cloud deployment
+function createHealthServer() {
+  const server = http.createServer((req, res) => {
+    if (req.url === '/health' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ 
+        status: 'healthy', 
+        timestamp: new Date().toISOString(),
+        service: 'video-processor'
+      }))
+    } else {
+      res.writeHead(404, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: 'Not found' }))
+    }
+  })
+  
+  const port = process.env.PORT || 8080
+  server.listen(port, () => {
+    console.log(`Health check server running on port ${port}`)
+  })
+  
+  return server
+}
+
 // Main worker loop
 async function main() {
+  // Start health check server
+  createHealthServer()
+  
   const processor = new VideoProcessor()
   
-  if (process.env.NODE_ENV === 'development' && redisClient) {
-    // Redis queue for local development
-    console.log('Starting Redis worker...')
-    
-    while (true) {
-      try {
-        const result = await redisClient.brPop('video-processing-queue', 10)
-        if (result) {
-          const jobPayload = JSON.parse(result.element)
-          await processor.processJob(jobPayload)
-        }
-      } catch (error) {
-        console.error('Redis worker error:', error)
-        await new Promise(resolve => setTimeout(resolve, 5000))
-      }
+  // Pub/Sub for production
+  console.log('Starting Pub/Sub worker...')
+  
+  const subscription = pubsub.subscription(process.env.PUBSUB_SUBSCRIPTION)
+  
+  subscription.on('message', async (message) => {
+    try {
+      const jobPayload = JSON.parse(message.data.toString())
+      await processor.processJob(jobPayload)
+      message.ack()
+    } catch (error) {
+      console.error('Pub/Sub worker error:', error)
+      message.nack()
     }
-  } else {
-    // Pub/Sub for production
-    console.log('Starting Pub/Sub worker...')
-    
-    const subscription = pubsub.subscription(process.env.PUBSUB_SUBSCRIPTION)
-    
-    subscription.on('message', async (message) => {
-      try {
-        const jobPayload = JSON.parse(message.data.toString())
-        await processor.processJob(jobPayload)
-        message.ack()
-      } catch (error) {
-        console.error('Pub/Sub worker error:', error)
-        message.nack()
-      }
-    })
-    
-    subscription.on('error', (error) => {
-      console.error('Subscription error:', error)
-    })
-  }
+  })
+  
+  subscription.on('error', (error) => {
+    console.error('Subscription error:', error)
+  })
 }
 
 if (require.main === module) {

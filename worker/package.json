@@ -5,14 +5,17 @@
   "main": "video-processor.js",
   "scripts": {
     "start": "node video-processor.js",
-    "dev": "NODE_ENV=development node video-processor.js"
+    "dev": "NODE_ENV=development node video-processor.js",
+    "prisma:generate": "prisma generate"
   },
   "dependencies": {
     "@google-cloud/pubsub": "^4.1.0",
     "@google-cloud/storage": "^7.6.0",
     "@prisma/client": "^5.7.0",
-    "axios": "^1.6.0",
-    "redis": "^4.6.0"
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.7.0"
   },
   "engines": {
     "node": ">=18.0.0"

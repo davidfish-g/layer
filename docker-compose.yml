@@ -1,0 +1,49 @@
+services:
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: layer-worker
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=production
+      # Remove Redis - using Pub/Sub instead
+      - DATABASE_URL=${DATABASE_URL}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/service-account.json
+      - GCS_BUCKET=${GCS_BUCKET}
+      - PUBSUB_TOPIC=${PUBSUB_TOPIC}
+      - PUBSUB_SUBSCRIPTION=${PUBSUB_SUBSCRIPTION}
+      # AI tool paths (set in container)
+      - FACEFUSION_PATH=/opt/facefusion
+      - MUSETALK_PATH=/opt/musetalk
+      # Cloud-specific optimizations
+      - PORT=8080
+      - CLOUD_PROVIDER=gcp
+    volumes:
+      - ./service-account.json:/app/service-account.json:ro
+      - /tmp/video-processing:/tmp/video-processing
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          memory: 8G
+          cpus: '4'
+        limits:
+          memory: 16G
+          cpus: '8'
+    # Health check for local development
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+# No Redis needed - using cloud-native message queue (Pub/Sub)
+volumes:
+  worker_temp: 
