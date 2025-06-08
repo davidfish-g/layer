@@ -55,4 +55,7 @@ temp/
 !tsconfig.json
 
 # Worker temp files
-worker/tmp/ 
+worker/tmp/
+
+# Local development files
+.cloud-sql-proxy.pid 

@@ -2,14 +2,14 @@
 
 A cloud-native web application for transforming videos using AI-powered face swapping, voice cloning, and lip-sync technology.
 
-## ✨ Features
+## Features
 
-- **🎭 Persona Creation**: Upload face images and voice samples to create AI personas
-- **🎬 Video Transformation**: Apply personas to source videos with face-swap, voice conversion, and lip-sync
-- **☁️ Cloud Processing**: Scalable serverless video processing on Google Cloud Run
-- **📊 Real-time Updates**: Track processing status with live updates
+- **Persona Creation**: Upload face images and voice samples to create AI personas
+- **Video Transformation**: Apply personas to source videos with face-swap, voice conversion, and lip-sync
+- **Cloud Processing**: Scalable serverless video processing on Google Cloud Run
+- **Real-time Updates**: Track processing status with live updates
 
-## 🏗️ **Cloud-Native Architecture**
+## Architecture
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
@@ -24,97 +24,204 @@ A cloud-native web application for transforming videos using AI-powered face swa
 └─────────────────┘                              └─────────────────┘
 ```
 
-## 🚀 **Tech Stack**
+**Development vs Production:**
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Local Dev     │    │   Cloud Services │    │   Production    │
+│ localhost:3000  │───▶│  Cloud SQL DB    │◀───│  Deployed App   │
+│ (Frontend)      │    │  Cloud Storage   │    │  (Cloud Run)    │
+│                 │    │  Worker Service  │    │                 │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
 
-### **Frontend & Web Framework**
-- **Next.js 14** - React framework with App Router
-- **React 18** - UI library with modern hooks
-- **TypeScript** - Full type safety
-- **Tailwind CSS** - Utility-first styling
-- **React Hook Form** - Optimized form handling
-- **TanStack Query** - Server state management
+## Tech Stack
 
-### **Authentication**
-- **NextAuth.js** - Full-featured auth framework
-- **Google OAuth** - Social authentication
-- **Prisma Adapter** - Session persistence
+**Frontend:** Next.js 14, React 18, TypeScript, Tailwind CSS, NextAuth.js  
+**Database:** PostgreSQL (Cloud SQL), Prisma ORM  
+**Cloud:** Google Cloud Run, Pub/Sub, Cloud Storage, Cloud SQL  
+**AI Processing:** FaceFusion, MuseTalk, ElevenLabs API, FFmpeg  
 
-### **Database & ORM**
-- **PostgreSQL** - Cloud SQL managed database
-- **Prisma** - Type-safe ORM with migrations
-- **Connection Pooling** - Optimized for serverless
+## Quick Start
 
-### **Cloud Infrastructure (Google Cloud)**
-- **Cloud Run** - Serverless container platform for AI workers
-- **Pub/Sub** - Cloud-native message queuing
-- **Cloud Storage** - Scalable file storage
-- **Cloud SQL** - Managed PostgreSQL
-- **Service Accounts** - Secure GCP authentication
+### Development
+```bash
+npm run dev:cloud    # Full cloud connection (recommended)
+npm run dev          # Basic development
+```
 
-### **AI Processing Pipeline**
-- **FaceFusion** - State-of-the-art face swapping
-- **MuseTalk** - Real-time lip synchronization
-- **ElevenLabs API** - High-quality voice conversion
-- **FFmpeg** - Video/audio processing
+### Deployment
+```bash
+npm run deploy       # Deploy frontend only
+npm run deploy:cloud # Deploy full stack
+```
 
-## 📁 **Project Structure**
+## Project Structure
 
 ```
 layer/
-├── app/                          # Next.js App Router
-│   ├── api/                     # API routes
-│   ├── components/              # React components
-│   ├── personas/                # Persona management pages
-│   └── layout.tsx               # Root layout
-│
-├── worker/                      # Cloud AI Workers
-│   ├── video-processor.js       # Main processing worker
-│   └── python/                  # AI tool wrappers
-│       ├── facefusion_wrapper.py
-│       └── musetalk_wrapper.py
-│
-├── lib/                         # Shared utilities
-│   ├── auth.ts                  # NextAuth configuration
-│   ├── queue.ts                 # Pub/Sub job queuing
-│   └── utils.ts                 # Helper functions
-│
-├── prisma/                      # Database layer
-│   ├── schema.prisma            # Database schema
-│   └── migrations/              # Version control for DB
-│
-├── Dockerfile                   # Production container
-├── docker-compose.yml           # Local development
-├── setup-gcp-resources.sh       # GCP infrastructure setup
-├── deploy-cloud.sh              # Cloud deployment script
-└── package.json                 # Dependencies
+├── app/                 # Next.js App Router
+│   ├── api/            # API routes
+│   ├── components/     # React components
+│   └── personas/       # Persona management
+├── worker/             # Cloud AI Workers
+│   ├── video-processor.js
+│   └── python/         # AI tool wrappers
+├── lib/                # Shared utilities
+├── prisma/             # Database schema
+├── deploy-*.sh         # Deployment scripts
+└── start-local-dev.sh  # Local development
 ```
 
+## Development Workflow
 
-### **Common Development Commands**
+### Setup
+1. **Prerequisites:**
+   ```bash
+   gcloud auth login
+   gcloud config set project layerid
+   # Ensure service-account.json is in project root
+   ```
+
+2. **Start Development:**
+   ```bash
+   npm run dev:cloud
+   ```
+   This automatically:
+   - Installs Cloud SQL Proxy if needed
+   - Connects to cloud database securely
+   - Starts Next.js dev server
+   - Handles cleanup on exit
+
+3. **Make Changes:** Edit code, see changes instantly at `localhost:3000`
+
+4. **Deploy:** `npm run deploy` when ready to ship
+
+### Environment Files
+- `.env.development` - Local development (gitignored)
+- `.env.local` - Auto-generated from development config
+- `.env` - Production configuration
+
+### Database Management
+```bash
+npm run db:studio    # View database in browser
+npm run db:push      # Apply schema changes
+npm run db:generate  # Generate Prisma client
+```
+
+## Deployment
+
+### First Time Setup
+```bash
+./setup-gcp-resources.sh  # Create infrastructure (once)
+./deploy-cloud.sh         # Deploy backend worker
+./deploy-frontend.sh      # Deploy frontend
+```
+
+### Regular Updates
+```bash
+./deploy-frontend.sh      # Frontend changes only
+./deploy-cloud.sh         # Backend/worker changes
+```
+
+### What Each Script Does
+
+**`setup-gcp-resources.sh`** (run once):
+- Enables required GCP APIs
+- Creates Pub/Sub topics and subscriptions
+- Sets up service accounts and permissions
+- Creates GCS storage bucket
+
+**`deploy-cloud.sh`** (backend):
+- Builds AI worker with Docker
+- Deploys to Cloud Run with auto-scaling
+- Handles AI model downloads in cloud
+
+**`deploy-frontend.sh`** (frontend):
+- Builds Next.js application
+- Deploys to Cloud Run
+- Configures environment variables
+
+## Configuration
+
+Required environment variables in `.env`:
 
 ```bash
-# Frontend Development
-npm run dev              # Start Next.js dev server
-npm run build           # Build for production
-npm run lint            # Type checking and linting
-
 # Database
-npx prisma generate     # Generate Prisma client
-npx prisma db push      # Push schema changes
-npx prisma studio       # Database GUI
+DATABASE_URL="postgresql://..."
 
-### **What the Scripts Do**
+# Authentication
+NEXTAUTH_SECRET="..."
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
 
-**`setup-gcp-resources.sh`**:
-- Enables required GCP APIs (Cloud Run, Cloud Build, Pub/Sub, Storage)
-- Creates Pub/Sub topics and subscriptions for job queuing
-- Sets up service accounts with proper permissions
-- Creates/verifies GCS storage bucket for video files
-- Configures IAM roles for secure cloud access
+# Google Cloud
+GCP_PROJECT_ID="layerid"
+GCS_BUCKET="layer-storage-bucket"
+PUBSUB_TOPIC="video-processing-topic"
 
-**`deploy-cloud.sh`**:
-- **Builds Docker image using Google Cloud Build** (100% cloud-based)
-- Uses powerful cloud machines for faster AI model downloads
-- Automatically pushes to Google Container Registry
-- Deploys to Cloud Run with production configuration
-- Sets up auto-scaling, health checks, and monitoring
+# AI Services
+ELEVENLABS_API_KEY="..."
+```
+
+## Available Commands
+
+| Command | Purpose |
+|---------|---------|
+| `npm run dev:cloud` | Start development with cloud backend |
+| `npm run dev` | Basic development server |
+| `npm run deploy` | Deploy frontend |
+| `npm run deploy:cloud` | Deploy full stack |
+| `npm run db:studio` | Database management UI |
+| `npm run build` | Build for production |
+| `npm run lint` | Type checking and linting |
+
+## Monitoring
+
+```bash
+# Frontend logs
+gcloud logs tail --filter='resource.labels.service_name=layer-frontend'
+
+# Backend logs
+gcloud logs tail --filter='resource.labels.service_name=video-processor'
+
+# Storage usage
+gcloud storage du gs://layer-storage-bucket --summarize
+```
+
+## Troubleshooting
+
+### Database Connection Issues
+```bash
+# Check Cloud SQL Proxy is running
+ps aux | grep cloud-sql-proxy
+
+# Restart development environment
+npm run dev:cloud
+```
+
+### OAuth Issues
+- Verify Google OAuth credentials in environment files
+- Check `http://localhost:3000` is authorized in Google OAuth console
+
+### Deployment Issues
+- **"Worker service not found"** → Deploy backend first: `./deploy-cloud.sh`
+- **"Build failed"** → Check Docker build logs and machine types
+- **"Authentication error"** → Verify service account permissions
+
+### General Issues
+```bash
+# Reinstall dependencies
+rm -rf node_modules package-lock.json && npm install
+
+# Check service status
+gcloud run services list
+```
+
+## Security
+
+- Environment files properly gitignored
+- Database access via secure proxy
+- Service accounts with minimal permissions
+- Sensitive data removed from git history
+
+Your development environment provides local development speed with cloud infrastructure power.
