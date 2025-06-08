@@ -3,6 +3,7 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client'],
   },
+  output: 'standalone',
   images: {
     remotePatterns: [
       {

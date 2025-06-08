@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "cp .env.development .env.local && next dev",
+    "dev:setup": "cp .env.development .env.local && npx prisma generate && npm run dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
